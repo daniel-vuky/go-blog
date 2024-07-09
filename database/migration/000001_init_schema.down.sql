@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS "refresh_tokens";
+DROP TABLE IF EXISTS "post_links";
+DROP TABLE IF EXISTS "comment";
+DROP TABLE IF EXISTS "url_rewrite";
+DROP TABLE IF EXISTS "category";
+DROP TABLE IF EXISTS "post";
+DROP TABLE IF EXISTS "admin";
+DROP TABLE IF EXISTS "authorization_rules";
+DROP TABLE IF EXISTS "authorization_roles";
+DROP TABLE IF EXISTS "user";
+DROP TYPE IF EXISTS "url_rewrite_entity";
+DROP TYPE IF EXISTS "gender";
