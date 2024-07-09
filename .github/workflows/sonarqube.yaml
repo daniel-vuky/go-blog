@@ -1,0 +1,76 @@
+name: Build
+
+on:
+  pull_request:
+    branches:
+      - main
+
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: go_blog
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.22  # specify your Go version
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Install golang-migrate
+        run: |
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migrate.linux-amd64.tar.gz | tar xvz
+          sudo mv migrate /usr/bin/migrate
+          which migrate
+
+      - name: Run migrations
+        run: make migrate_up
+
+      - name: Create config file
+        run: |
+          echo '
+            server:
+              port: 8080
+            database:
+              driver: postgres
+              host: localhost
+              port: 5432
+              user: root
+              password: secret
+              dbname: go_blog
+              ssl: disable
+              timezone: Asia/Bangkok
+          ' > config.yaml
+
+      - name: Run tests with coverage
+        run: |
+          mkdir -p bin
+          go test -short -coverprofile=bin/cov.out $(go list ./... | grep -v database/)
+      - uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          only_changed_files: true
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
+      - uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
