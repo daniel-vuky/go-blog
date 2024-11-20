@@ -10,3 +10,6 @@ DROP TABLE IF EXISTS "authorization_roles";
 DROP TABLE IF EXISTS "user";
 DROP TYPE IF EXISTS "url_rewrite_entity";
 DROP TYPE IF EXISTS "gender";
+DROP TRIGGER IF EXISTS user_password_changed_trigger ON "user";
+DROP TRIGGER IF EXISTS admin_password_changed_trigger ON "admin";
+DROP FUNCTION IF EXISTS update_password_changed_at;

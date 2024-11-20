@@ -27,20 +27,19 @@ type Config struct {
 	Database *Database
 }
 
+var configOnce sync.Once
+var loadedConfig = &Config{
+	Server:   &Server{},
+	Database: &Database{},
+}
+
 // LoadConfig
 // Load configuration from file
 // @param path string
 // @return *Config, error
 func LoadConfig(path string) (*Config, error) {
-	var (
-		once         sync.Once
-		err          error
-		loadedConfig = &Config{
-			Server:   &Server{},
-			Database: &Database{},
-		}
-	)
-	once.Do(func() {
+	var err error
+	configOnce.Do(func() {
 		viper.AddConfigPath(path)
 		viper.SetConfigName("config")
 		viper.SetConfigType("yaml")

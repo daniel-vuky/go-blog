@@ -133,3 +133,22 @@ ALTER TABLE "comment" ADD FOREIGN KEY ("user_id") REFERENCES "user" ("user_id") 
 ALTER TABLE "comment" ADD FOREIGN KEY ("parent_id") REFERENCES "comment" ("comment_id") ON DELETE CASCADE ON UPDATE NO ACTION;
 
 ALTER TABLE "comment" ADD FOREIGN KEY ("post_id") REFERENCES "post" ("post_id") ON DELETE CASCADE;
+
+CREATE OR REPLACE FUNCTION update_password_changed_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.hashed_password IS DISTINCT FROM OLD.hashed_password THEN NEW.password_changed_at = NOW();
+END IF;
+RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER admin_password_changed_trigger
+    BEFORE UPDATE ON "admin"
+    FOR EACH ROW
+    EXECUTE FUNCTION update_password_changed_at();
+
+CREATE TRIGGER user_password_changed_trigger
+    BEFORE UPDATE ON "user"
+    FOR EACH ROW
+    EXECUTE FUNCTION update_password_changed_at();

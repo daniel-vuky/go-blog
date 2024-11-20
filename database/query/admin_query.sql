@@ -3,10 +3,25 @@ SELECT *
 FROM admin
 WHERE email = $1;
 
+-- name: GetTotalAdmin :one
+SELECT COUNT(*)
+FROM admin
+WHERE
+    (email ILIKE '%' || $1 || '%' OR $1 IS NULL) AND
+    (active = $2 OR $2 IS NULL) AND
+    (firstname ILIKE '%' || $3 || '%' OR $3 IS NULL) AND
+    (lastname ILIKE '%' || $4 || '%' OR $4 IS NULL);
+
 -- name: GetListAdmin :many
 SELECT *
 FROM admin
-LIMIT $1 OFFSET $2;
+WHERE
+    (email ILIKE '%' || $1 || '%' OR $1 IS NULL) AND
+    (active = $2 OR $2 IS NULL) AND
+    (firstname ILIKE '%' || $3 || '%' OR $3 IS NULL) AND
+    (lastname ILIKE '%' || $4 || '%' OR $4 IS NULL)
+ORDER BY $5 $6
+LIMIT $7 OFFSET $8;
 
 -- name: CreateAdmin :one
 INSERT INTO admin

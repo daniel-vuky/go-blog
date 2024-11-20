@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"fmt"
 	model "github.com/daniel-vuky/go-blog/internal/models/admin"
 	"github.com/daniel-vuky/go-blog/internal/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -143,23 +144,52 @@ func (repo *Repository) Get(
 const getListAdmin = `-- name: GetListAdmin :many
 SELECT admin_id, role_id, email, hashed_password, firstname, lastname, active, lock_expires, password_changed_at, created_at
 FROM admin
-LIMIT $1 OFFSET $2
+WHERE admin_id != 0
+%s
+ORDER BY %s %s
+LIMIT %d OFFSET %d
 `
 
-// GetList
-// Returns a list of admins.
+const getTotalAdmin = `-- name: GetTotalAdmin :one
+SELECT COUNT(*)
+FROM admin
+WHERE admin_id != 0
+%s
+`
+
+// GetList returns a list of admins.
 // @param ctx context.Context
 // @param arg *model.GetListAdminParams
 // @return []model.Admin
+// @return total admin
+// @return error
 func (repo *Repository) GetList(
 	ctx context.Context,
 	arg *model.GetListAdminParams,
-) ([]model.Admin, error) {
-	rows, err := repo.connPool.Query(ctx, getListAdmin, arg.Limit, arg.Offset)
+) ([]model.Admin, int64, error) {
+	offset := arg.PageSize * (arg.CurrentPage - 1)
+
+	// Build dynamic filter conditions
+	filterConditions, filterArgs := arg.BuildFilterConditions(arg.Filter)
+
+	// Prepare the main query with dynamic filters
+	query := fmt.Sprintf(
+		getListAdmin,
+		filterConditions,
+		arg.OrderBy,
+		arg.OrderDirection,
+		arg.PageSize,
+		offset,
+	)
+
+	// Execute the main query
+	rows, err := repo.connPool.Query(ctx, query, filterArgs...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
+
+	// Process the results
 	var items []model.Admin
 	for rows.Next() {
 		var i model.Admin
@@ -175,14 +205,26 @@ func (repo *Repository) GetList(
 			&i.PasswordChangedAt,
 			&i.CreatedAt,
 		); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return items, nil
+
+	// Build and execute the total count query
+	totalQuery := fmt.Sprintf(getTotalAdmin, filterConditions)
+	totalArgs := filterArgs // Reuse filterArgs for the count query
+	totalRow := repo.connPool.QueryRow(ctx, totalQuery, totalArgs...)
+
+	var count int64
+	err = totalRow.Scan(&count)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return items, count, nil
 }
 
 const updateAdmin = `-- name: UpdateAdmin :one
@@ -192,8 +234,7 @@ SET role_id = COALESCE($2, role_id),
     firstname = COALESCE($4, firstname),
     lastname = COALESCE($5, lastname),
     active = COALESCE($6, active),
-    lock_expires = COALESCE($7, lock_expires),
-    password_changed_at = COALESCE($8, password_changed_at)
+    lock_expires = COALESCE($7, lock_expires)
 WHERE email = $1
 RETURNING admin_id, role_id, email, hashed_password, firstname, lastname, active, lock_expires, password_changed_at, created_at
 `
@@ -215,7 +256,6 @@ func (repo *Repository) Update(
 		arg.Lastname,
 		arg.Active,
 		arg.LockExpires,
-		arg.PasswordChangedAt,
 	)
 	var i model.Admin
 	err := row.Scan(
