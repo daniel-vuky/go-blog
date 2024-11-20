@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"github.com/daniel-vuky/go-blog/internal/common"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -46,8 +47,19 @@ type CreateAdminParams struct {
 }
 
 type GetListAdminParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	common.FilterParams
+	Filter         *GetListAdminFilterParams
+	OrderBy        string `json:"order_by"`
+	OrderDirection string `json:"order_direction"`
+	PageSize       int32  `json:"page_size"`
+	CurrentPage    int32  `json:"current_page"`
+}
+
+type GetListAdminFilterParams struct {
+	Email     pgtype.Text `json:"email"`
+	Active    pgtype.Bool `json:"active"`
+	Firstname pgtype.Text `json:"firstname"`
+	Lastname  pgtype.Text `json:"lastname"`
 }
 
 type UpdateAdminParams struct {

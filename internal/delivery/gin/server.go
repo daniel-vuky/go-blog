@@ -3,19 +3,19 @@ package gin
 import (
 	"context"
 	"fmt"
+	adminHandler "github.com/daniel-vuky/go-blog/internal/delivery/gin/handler/admin"
 	adminService "github.com/daniel-vuky/go-blog/internal/service/admin"
 	adminStorage "github.com/daniel-vuky/go-blog/internal/storage/admin"
 	"github.com/daniel-vuky/go-blog/pkg/config"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/sync/errgroup"
 	"net/http"
 )
 
 // service
 // Struct to hold all application services
-type service struct {
-	adminService *adminService.Service
+type handlers struct {
+	adminHandler *adminHandler.Handler
 }
 
 // Server
@@ -23,7 +23,7 @@ type service struct {
 type Server struct {
 	config  *config.Config
 	router  *gin.Engine
-	service *service
+	handler *handlers
 }
 
 // NewServer
@@ -34,17 +34,21 @@ func NewServer() (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
-	connPool, err := pgxpool.New(context.Background(), loadedConfig.GetDatabaseSource())
+	connPool, err := loadedConfig.ConnectToPgxPool()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connection pool: %w", err)
 	}
-	service := &service{
-		adminService: adminService.NewService(adminStorage.NewAdminRepository(connPool)),
+	listHandlers := &handlers{
+		adminHandler: adminHandler.NewHandler(
+			adminService.NewService(
+				adminStorage.NewAdminRepository(connPool),
+			),
+		),
 	}
 	newServer := &Server{
 		config:  loadedConfig,
 		router:  gin.Default(),
-		service: service,
+		handler: listHandlers,
 	}
 	newServer.loadRoutes()
 

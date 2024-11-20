@@ -7,7 +7,7 @@ import (
 
 type Reader interface {
 	Get(ctx context.Context, email string) (adminModel.Admin, error)
-	GetList(ctx context.Context, arg *adminModel.GetListAdminParams) ([]adminModel.Admin, error)
+	GetList(ctx context.Context, arg *adminModel.GetListAdminParams, filterParams *adminModel.GetListAdminFilterParams) ([]adminModel.Admin, int64, error)
 }
 
 type Writer interface {

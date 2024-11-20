@@ -18,13 +18,36 @@ func NewService(repo admin.Repository) *Service {
 	return &Service{AdminRepo: repo}
 }
 
+// convertAdminToModel
+// Converts an admin from the repository to the model.
+// @param adminUser model.Admin
+// @return model.Admin
+func convertAdminToModel(adminUser *model.Admin) model.Admin {
+	return model.Admin{
+		AdminID:           adminUser.AdminID,
+		RoleID:            adminUser.RoleID,
+		Email:             adminUser.Email,
+		Firstname:         adminUser.Firstname,
+		Lastname:          adminUser.Lastname,
+		Active:            adminUser.Active,
+		LockExpires:       adminUser.LockExpires,
+		PasswordChangedAt: adminUser.PasswordChangedAt,
+		CreatedAt:         adminUser.CreatedAt,
+	}
+}
+
 // CreateAdmin
 // Creates a new admin.
 // @param c context.Context
 // @param arg *model.CreateAdminParams
 // @return model.Admin
 func (s *Service) CreateAdmin(c context.Context, arg *model.CreateAdminParams) (model.Admin, error) {
-	return s.AdminRepo.Create(c, arg)
+	createdAdmin, err := s.AdminRepo.Create(c, arg)
+	if err != nil {
+		return createdAdmin, err
+	}
+
+	return convertAdminToModel(&createdAdmin), nil
 }
 
 // DeleteAdmin
@@ -33,7 +56,12 @@ func (s *Service) CreateAdmin(c context.Context, arg *model.CreateAdminParams) (
 // @param email string
 // @return model.Admin
 func (s *Service) DeleteAdmin(c context.Context, email string) (model.Admin, error) {
-	return s.AdminRepo.Delete(c, email)
+	deletedAdmin, err := s.AdminRepo.Delete(c, email)
+	if err != nil {
+		return deletedAdmin, err
+	}
+
+	return convertAdminToModel(&deletedAdmin), nil
 }
 
 // GetAdmin
@@ -42,16 +70,42 @@ func (s *Service) DeleteAdmin(c context.Context, email string) (model.Admin, err
 // @param email string
 // @return model.Admin
 func (s *Service) GetAdmin(c context.Context, email string) (model.Admin, error) {
-	return s.AdminRepo.Get(c, email)
+	existedAdmin, err := s.AdminRepo.Get(c, email)
+	if err != nil {
+		return existedAdmin, err
+	}
+
+	return convertAdminToModel(&existedAdmin), err
+}
+
+type ListAdminResponse struct {
+	Totals int64         `json:"totals"`
+	Admins []model.Admin `json:"admins"`
 }
 
 // GetListAdmin
 // Returns a list of admins.
 // @param c context.Context
 // @param arg *model.GetListAdminParams
-// @return []model.Admin
-func (s *Service) GetListAdmin(c context.Context, arg *model.GetListAdminParams) ([]model.Admin, error) {
-	return s.AdminRepo.GetList(c, arg)
+// @return ListAdminResponse
+func (s *Service) GetListAdmin(c context.Context, arg *model.GetListAdminParams) (ListAdminResponse, error) {
+	var rsp ListAdminResponse
+	if arg.OrderBy == "" {
+		arg.OrderBy = "admin_id"
+	}
+	if arg.OrderDirection == "" {
+		arg.OrderDirection = "desc"
+	}
+	listAdmin, totalAdmin, err := s.AdminRepo.GetList(c, arg)
+	if err != nil {
+		return rsp, err
+	}
+	rsp = ListAdminResponse{
+		Totals: totalAdmin,
+		Admins: listAdmin,
+	}
+
+	return rsp, nil
 }
 
 // UpdateAdmin
@@ -60,7 +114,12 @@ func (s *Service) GetListAdmin(c context.Context, arg *model.GetListAdminParams)
 // @param arg *model.UpdateAdminParams
 // @return model.Admin
 func (s *Service) UpdateAdmin(c context.Context, arg *model.UpdateAdminParams) (model.Admin, error) {
-	return s.AdminRepo.Update(c, arg)
+	updatedAdmin, err := s.AdminRepo.Update(c, arg)
+	if err != nil {
+		return updatedAdmin, err
+	}
+
+	return convertAdminToModel(&updatedAdmin), nil
 }
 
 // IsAdminActive
